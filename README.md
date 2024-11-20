@@ -1,3 +1,5 @@
+# Lidar
+
 ***!!! Le PCB réalisé pour le V-NOM n'utilise pas le même µP que la STM32 qu'on utilise pour tester le lidar, il faut bien garder ça en tête et il faudra modifier le code en conséquence !!!***
 
 **1 - Configuration de l'ioc**
