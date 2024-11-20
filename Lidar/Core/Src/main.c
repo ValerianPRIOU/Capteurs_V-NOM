@@ -20,7 +20,8 @@
 #include "main.h"
 #include "usart.h"
 #include "gpio.h"
-
+#include <stdio.h>
+#include <string.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -33,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUFFER_SIZE 32
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,7 +45,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint8_t lidar_buffer[BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,6 +61,35 @@ int __io_putchar(int ch)
 	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
 	return ch;
 }
+
+void lecture_lidar(UART_HandleTypeDef *huart){
+	HAL_StatusTypeDef status;
+
+	uint8_t depart_buffer[2];
+	status = HAL_UART_Receive(huart, depart_buffer, 2, 100);
+
+	// Est-ce que le receive s'est bien passé?
+	if(status != HAL_OK){
+		printf("Erreur de réception\r\n");
+		return;
+	}
+
+	// Est-ce qu'on est au début de notre trame?
+	if (depart_buffer[0] == 0x55 && depart_buffer[1] == 0xAA) {
+		printf("Flag de départ trouvé!\r\n");
+
+		// On peut donc lire le reste de la trame
+		status = HAL_UART_Receive(huart, lidar_buffer, 20, 100);
+
+		// Si le receive s'est bien passé
+		if(status == HAL_OK){
+			uint8_t packet_header = lidar_buffer[3];
+			uint8_t package_type = lidar_buffer[4];
+		}
+	}
+
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -95,8 +125,6 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   printf("=====Lidar=====\r\n");
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
