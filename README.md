@@ -4,6 +4,8 @@
 
 **1 - Configuration de l'ioc**
 
+![pinout](https://github.com/user-attachments/assets/90f39e0a-fe7a-4c96-b8e5-be0f2ea05c86)
+
 On configure un USART pour pouvoir récupérer les trames du Lidar. 
 
 En choisissant USART1 on tombe par défaut sur les pins PC4 et PC5, ce qui pose problème car ils sont aussi liés à PA2 ET PA3 qui représentent l'USART2 qu'on utilise déjà pour débugger.  
