@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_SIZE 32
+#define LIDAR_TRAME_SIZE 1000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,7 +45,30 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t lidar_buffer[BUFFER_SIZE];
+
+// Traitement de texte
+const char OK [] = "55AA";
+
+unsigned char uart_lidar_rx[1]; // Ce qu'envoie le lidar
+unsigned char uart_pc_tx[1]; // Ce que reçoit le pc du lidar, variable qu'on peut "traiter"
+unsigned char ral[2] = {'\r', '\n'};
+char trame [LIDAR_TRAME_SIZE];
+char sample_quantity[1];
+char start_angle[2];
+char end_angle[2];
+char sample_data[2]; // Distance
+uint8_t angle;
+uint8_t distance;
+
+// Algorithmie
+int i = 0;
+int first_data = 0;
+int data_ready = 0;
+uint8_t it_rx_lidar = 0; // Flag signalant l'arrivée de donnée via l'uart1, destiné au lidar
+
+// Minicom
+char uart_tx_buffer[128];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,35 +84,6 @@ int __io_putchar(int ch)
 	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
 	return ch;
 }
-
-void lecture_lidar(UART_HandleTypeDef *huart){
-	HAL_StatusTypeDef status;
-
-	uint8_t depart_buffer[2];
-	status = HAL_UART_Receive(huart, depart_buffer, 2, 100);
-
-	// Est-ce que le receive s'est bien passé?
-	if(status != HAL_OK){
-		printf("Erreur de réception\r\n");
-		return;
-	}
-
-	// Est-ce qu'on est au début de notre trame?
-	if (depart_buffer[0] == 0x55 && depart_buffer[1] == 0xAA) {
-		printf("Flag de départ trouvé!\r\n");
-
-		// On peut donc lire le reste de la trame
-		status = HAL_UART_Receive(huart, lidar_buffer, 20, 100);
-
-		// Si le receive s'est bien passé
-		if(status == HAL_OK){
-			uint8_t packet_header = lidar_buffer[3];
-			uint8_t package_type = lidar_buffer[4];
-		}
-	}
-
-}
-
 /* USER CODE END 0 */
 
 /**
@@ -125,6 +119,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   printf("=====Lidar=====\r\n");
+  HAL_UART_Receive_IT(&huart1, uart_lidar_rx, 1); // Active la réception de données en mode interruption
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -134,6 +129,45 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if(it_rx_lidar){
+		  printf("it_rx_lidar\r\n");
+
+		  if(data_ready == 1){
+			  printf("data_ready\r\n");
+			  data_ready = 0;
+		  }
+
+		  if(uart_lidar_rx[0] == 10){
+			  HAL_UART_Transmit(&huart2,ral, 2, 1000); // Permet d'interpréter le retour à la ligne ASCII si on en reçoit
+		  }
+
+		  else{
+			  uart_pc_tx[0] = uart_lidar_rx[0];
+			  HAL_UART_Transmit(&huart2, uart_pc_tx, 1, 1000); // On envoie sur l'uart2 (minicom) ce que le lidar nous envoie
+		      trame[i] = uart_pc_tx[0]; // On copie ce qui sort du lidar dans notre "trame"
+
+		      if(i >= 4){
+		    	  if(strncmp("55AA",&trame[i-4],5) == 0){
+		    		  i = 0; // Si on trouve notre flag de départ, on réinitialise i à 0 pour synchroniser notre trame
+
+		    		  if(first_data == 1){
+		    			  data_ready = 1; // Si la trame est initialisée, le premier caractère du tableau voulu est prêt et on peut donc passer au traitement de la trame
+		    		  }
+		    		  else first_data = 1; // Permet d'enregistrer le tableau désiré
+		    	  }
+
+		    	  else{
+		    		  if(i == LIDAR_TRAME_SIZE - 1){
+		    			  i = 0;
+		    		  }
+		    		  else i++;
+		    	  }
+		      }
+		      else i++;
+		  }
+		  it_rx_lidar = 0;
+	  }
+
   }
   /* USER CODE END 3 */
 }
@@ -185,7 +219,10 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+	it_rx_lidar = 1;
+	HAL_UART_Receive_IT(&huart1, uart_lidar_rx, 1); // Reactive la reception en interruption sans quoi on ne capterait qu'un seul octet
+}
 /* USER CODE END 4 */
 
 /**
