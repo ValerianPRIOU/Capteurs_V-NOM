@@ -12,3 +12,4 @@ En choisissant USART1 on tombe par défaut sur les pins PC4 et PC5, ce qui pose 
 Cela peut provoquer des courts-circuits donc on change évidemment les pins de celui-ci. Dans notre cas on atterit alors sur PA9 ET PA10.
 
 
+![image](https://github.com/user-attachments/assets/aca73b9e-295d-4ee6-870a-59c67b41d228)
